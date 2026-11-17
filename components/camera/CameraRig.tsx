@@ -21,6 +21,7 @@ const { lerp, damp, clamp } = THREE.MathUtils;
 export default function CameraRig({ targetZ, farZ, onDoor, onReachEnd }: Props) {
   const z = useRef<number | null>(null);
   const fired = useRef(false);
+  const armed = useRef(false); // true once the camera has been away from the main carpet
   const lookX = useRef(0);
   const look = useRef<THREE.Vector3 | null>(null);
 
@@ -66,9 +67,9 @@ export default function CameraRig({ targetZ, farZ, onDoor, onReachEnd }: Props) 
     look.current.set(lookX.current, lookY, camZ - 10);
     cam.lookAt(look.current);
 
-    // the carpet now fills the screen: take a picture and hand over
-    // 
-     if (!fired.current && zNow <= layout.zoomEndZ + 0.9) {
+    // the carpet now fills the screen while moving forward: take a picture and hand over
+    if (zNow > layout.zoomEndZ + 1.5) armed.current = true;
+    if (armed.current && !fired.current && zNow <= layout.zoomEndZ + 0.9) {
       fired.current = true;
       let snapshot = "";
       try {

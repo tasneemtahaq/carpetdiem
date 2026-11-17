@@ -1,98 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
-import * as THREE from "three";
 import { layout, lighting, palette } from "@/config/site";
 import { mainArtwork, type Artwork } from "@/config/artworks";
 import Corridor from "@/components/architecture/Corridor";
 import CameraRig from "@/components/camera/CameraRig";
-import NavBar from "@/components/NavBar";
 import { FrostedDoor } from "@/components/FrostedDoor";
+import { journey, zFromJourney, FAR_Z, SPLIT } from "@/lib/journey";
 
 type Props = {
-  startZ: number | null; // null = start at the frosted door
-  onOpenArtwork: (id: string, returnZ: number, snapshot?: string) => void;
-  onShop: () => void;
+  // open the revolving page for one carpet ("snapshot" = picture for the zoom transition)
+  onOpenArtwork: (id: string, snapshot?: string) => void;
 };
 
-// How much scrolling it takes to slide the frosted door open
-const DOOR_SPAN = 6;
-const FAR_Z = layout.galleryStartZ + DOOR_SPAN; // door fully closed
-const END_Z = layout.zoomEndZ; // zoomed right into the main carpet
-const RANGE = FAR_Z - END_Z;
-const toProgress = (z: number) => (FAR_Z - z) / RANGE;
-
-export default function GalleryScene({ startZ, onOpenArtwork, onShop }: Props) {
+export default function GalleryScene({ onOpenArtwork }: Props) {
   const [selected, setSelected] = useState<Artwork | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const [progress, setProgress] = useState(() => toProgress(startZ ?? FAR_Z));
   const [lowPower] = useState(
     () => window.innerWidth < 768 || window.matchMedia("(pointer: coarse)").matches
   );
-  const targetZ = useRef(startZ ?? FAR_Z);
   const doorRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLParagraphElement>(null);
 
-  // set where the camera should travel to (also moves the scroll bar)
-  const goTo = (z: number) => {
-    const clamped = THREE.MathUtils.clamp(z, END_Z, FAR_Z);
-    targetZ.current = clamped;
-    setProgress(toProgress(clamped));
-  };
-
-  // scrolling drives everything: mouse wheel, touch swipe, arrow keys
-  useEffect(() => {
-    const move = (d: number) => {
-      const z = THREE.MathUtils.clamp(targetZ.current - d, END_Z, FAR_Z);
-      targetZ.current = z;
-      setProgress(toProgress(z));
-    };
-    const onBar = (e: Event) => !!(e.target as HTMLElement | null)?.closest?.(".walkbar");
-    let lastY = 0;
-    const onWheel = (e: WheelEvent) => move(e.deltaY * 0.012);
-    const onTouchStart = (e: TouchEvent) => {
-      lastY = e.touches[0].clientY;
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      if (onBar(e)) return;
-      const y = e.touches[0].clientY;
-      move((lastY - y) * 0.05);
-      lastY = y;
-    };
-        const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === "w") move(2);
-      if (e.key === "ArrowUp" || e.key === "PageUp" || e.key === "s") move(-2);
-    };
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("keydown", onKey);
-      document.body.style.cursor = "auto";
-    };
-  }, []);
-
-  const jump = (z: number) => {
-    setSelected(null);
-    goTo(z);
-  };
-
-  // scroll bar dragging
-  const dragBar = (e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const f = THREE.MathUtils.clamp((e.clientY - rect.top) / rect.height, 0, 1);
-    goTo(FAR_Z - f * RANGE);
-  };
-
-  const zNow = FAR_Z - progress * RANGE;
-  const doorClosed = zNow > layout.galleryStartZ + 0.3; // still at the frosted door?
-  const atEnd = zNow < layout.galleryEndZ + 4; // close to the main carpet?
+  // where the camera should be, read from the one shared scroll position
+  const targetZ = useMemo(
+    () => ({
+      get current() {
+        return zFromJourney(journey.target);
+      },
+    }),
+    []
+  );
 
   return (
     <div className="scene fade-in" style={{ position: "fixed", inset: 0 }}>
@@ -111,21 +51,22 @@ export default function GalleryScene({ startZ, onOpenArtwork, onShop }: Props) {
           onSelect={(a) => {
             if (targetZ.current < layout.galleryStartZ) setSelected(a);
           }}
-          onMainClick={() => jump(END_Z)}
+          onMainClick={() => {
+            journey.target = SPLIT;
+          }}
         />
-                <CameraRig
+        <CameraRig
           targetZ={targetZ}
           farZ={FAR_Z}
           onDoor={(open) => {
             const door = doorRef.current;
-            if (!door) return;
-            door.style.transform = `translateX(${-open * 108}%)`;
-            door.style.visibility = open > 0.999 ? "hidden" : "visible";
+            if (door) {
+              door.style.transform = `translateX(${-open * 108}%)`;
+              door.style.visibility = open > 0.999 ? "hidden" : "visible";
+            }
+            if (hintRef.current) hintRef.current.style.opacity = open > 0.95 ? "1" : "0";
           }}
-          onReachEnd={(snapshot) => {
-            setLeaving(true);
-            onOpenArtwork(mainArtwork.id, layout.galleryEndZ, snapshot);
-          }}
+          onReachEnd={(snapshot) => onOpenArtwork(mainArtwork.id, snapshot)}
         />
 
         {/* CINEMATIC EFFECTS — delete this block (and the two imports
@@ -148,55 +89,25 @@ export default function GalleryScene({ startZ, onOpenArtwork, onShop }: Props) {
         hint="Scroll to enter"
       />
 
-      {/* ───── interface on top ───── */}
-      {!leaving && (
-        <div className="ui">
-          <NavBar
-            onLogoClick={() => jump(FAR_Z)}
-            links={[
-              { label: "Entrance", onClick: () => jump(FAR_Z) },
-              { label: "Gallery", onClick: () => jump(layout.galleryStartZ) },
-              { label: "Main Artwork", onClick: () => jump(layout.galleryEndZ) },
-              { label: "Shop", onClick: onShop },
-            ]}
-          />
+      <div className="ui">
+        <p className="hint" ref={hintRef} style={{ opacity: 0 }}>
+          Scroll or swipe to walk
+        </p>
 
-          {/* SCROLL BAR — from the door all the way into the main carpet */}
-          <div
-            className="walkbar"
-            onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId);
-              dragBar(e);
-            }}
-            onPointerMove={(e) => {
-              if (e.buttons === 1 || e.pointerType === "touch") dragBar(e);
-            }}
-          >
-            <div className="walkbar-thumb" style={{ top: `${progress * 100}%` }} />
+        {selected && (
+          <div className="caption">
+            <button className="caption-close" onClick={() => setSelected(null)} aria-label="Close">
+              ×
+            </button>
+            <p className="eyebrow">{selected.collection}</p>
+            <h2>{selected.title}</h2>
+            <p className="body">{selected.description}</p>
+            <button className="text-link" onClick={() => onOpenArtwork(selected.id)}>
+              View in 360°
+            </button>
           </div>
-
-          {!doorClosed && !selected && (
-            <p className="hint">{atEnd ? "Keep scrolling" : "Scroll or swipe to walk"}</p>
-          )}
-
-          {selected && (
-            <div className="caption">
-              <button className="caption-close" onClick={() => setSelected(null)} aria-label="Close">
-                ×
-              </button>
-              <p className="eyebrow">{selected.collection}</p>
-              <h2>{selected.title}</h2>
-              <p className="body">{selected.description}</p>
-              <button
-                className="text-link"
-                onClick={() => onOpenArtwork(selected.id, targetZ.current)}
-              >
-                View in 360°
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -349,3 +349,49 @@ body {
   .fd-text { left: 8%; }
   .fd-text { width: 80%; }
 }
+
+/* ───── one nav bar + one scroll bar over the whole journey ───── */
+.stage-root {
+  background: #eae4d9; /* no dark flash when switching pages */
+}
+.journey-ui {
+  z-index: 45;
+}
+.hint {
+  transition: opacity 0.5s ease;
+}
+
+/* tablets */
+@media (max-width: 1024px) {
+  .nav { padding: 12px 24px; }
+  .nav-links { gap: 22px; }
+}
+
+/* phones */
+@media (max-width: 640px) {
+  .nav { padding: 8px 12px; gap: 10px; }
+  .nav-logo img { height: 34px; }
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 12px;
+  }
+  .nav-links button {
+    padding: 4px 0;
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+  }
+  .walkbar { right: 4px; top: 96px; bottom: 80px; }
+}
+
+/* very narrow phones: hide the "360°" link to save space */
+@media (max-width: 380px) {
+  .nav-links button:nth-child(4) { display: none; }
+}
+
+/* phones turned sideways (short screens) */
+@media (max-height: 500px) {
+  .nav { padding: 6px 16px; }
+  .nav-logo img { height: 30px; }
+  .walkbar { top: 60px; bottom: 30px; }
+}

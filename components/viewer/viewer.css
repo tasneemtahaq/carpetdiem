@@ -281,3 +281,16 @@
 .lv .cursor-outer {
   display: none !important;
 }
+/* ───── same scrolling and nav bar as the gallery ───── */
+.lv {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* the old header and scroll bar of this page are no longer used */
+.lv .main-header,
+.lv .lv-bar,
+.lv .cursor-inner,
+.lv .cursor-outer {
+  display: none !important;
+}

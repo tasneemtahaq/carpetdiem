@@ -1,26 +1,25 @@
 "use client";
 
-import { useScrollNav } from "@/lib/useScrollNav";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { siteConfig } from "@/config/site";
 import type { Artwork } from "@/config/artworks";
 import { modelPaths } from "@/components/artwork/FittedModel";
+import { journey, turnFromJourney, MAIN_END } from "@/lib/journey";
 import "./viewer.css";
 
 // ───── fixed settings ─────
 const STAGE = "#e6dfd2"; // warm ivory stage
 const MODEL_SIZE = 3.0; // the carpet's longest side, in scene units
 const SPARK_COUNT = 450;
-const MAIN_END = 0.86; // the first 86% of the page is the four slides; the rest is the finale
+const IDLE_SPIN = 0.25; // gentle spin of the carpet on its own (0 = only turns when scrolling)
 const SLIDE_RANGES: [number, number][] = [
   [-0.1, 0.12],
   [0.28, 0.4],
   [0.56, 0.68],
   [0.84, 1.05],
 ];
-const NAV_TARGETS = [0, 0.34, 0.62, 0.94];
 const IMAGE_ENDINGS = [".jpg", ".jpeg", ".png", ".webp", ".JPG", ".PNG"];
 
 const VERTEX_SHADER = `
@@ -130,18 +129,17 @@ function SplitTitle({ text }: { text: string }) {
   );
 }
 
-type Props = { artwork: Artwork; onBack: () => void; onShop: () => void; startAtEnd?: boolean };
+type Props = { artwork: Artwork; onShop: () => void };
 
-export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = false }: Props) {
+export default function CarpetViewer({ artwork, onShop }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // the latest "open the shop" action, so the 3D loop always calls the current one
   const onShopRef = useRef(onShop);
-  const shopFired = useRef(false);
   useEffect(() => {
     onShopRef.current = onShop;
   }, [onShop]);
-    // scroll up past the top (or press ↑) to go back to the gallery
-  useScrollNav(rootRef, { onPullTop: onBack });
 
   useEffect(() => {
     const root = rootRef.current;
@@ -153,14 +151,14 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
     let disposed = false;
     let raf = 0;
-    let smoothRaw = 0; // smoothed position on the whole page, 0..1
-    let snapCamera = false;
+    // start wherever the shared scroll already is (e.g. coming back up from the shop)
+    let smoothRaw = turnFromJourney(journey.target);
+    let snapCamera = smoothRaw > 0.02;
     let currentScroll = 0; // progress through the four slides, 0..1
     let mouseX = 0, mouseY = 0, targetMouseX = 0, targetMouseY = 0;
-    let cursorX = sizes.width / 2, cursorY = sizes.height / 2;
-    let outerX = cursorX, outerY = cursorY;
     let modelPivot: THREE.Group | null = null;
     let mixer: THREE.AnimationMixer | null = null;
+    let shopFired = false;
 
     // ── scene, camera ──
     const scene = new THREE.Scene();
@@ -376,34 +374,14 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
     }
 
     // ── page elements updated every frame ──
-    const cursorInner = root.querySelector<HTMLElement>(".cursor-inner");
-    const cursorOuter = root.querySelector<HTMLElement>(".cursor-outer");
     const slides = [1, 2, 3, 4].map((n) => root.querySelector<HTMLElement>(`#lv-slide-${n}`));
     const slide2Img = root.querySelector<HTMLElement>("#lv-slide-2-img");
     const fills = [1, 2, 3, 4].map((n) => root.querySelector<HTMLElement>(`#lv-dash-fill-${n}`));
     const dots = Array.from(root.querySelectorAll<HTMLElement>(".grid-dot"));
-    const navLinks = Array.from(root.querySelectorAll<HTMLElement>(".nav-link"));
-    const barThumb = root.querySelector<HTMLElement>(".lv-bar-thumb");
     const fadeEl = root.querySelector<HTMLElement>(".lv-fade");
     const finaleHint = root.querySelector<HTMLElement>(".lv-finale-hint");
 
-    const maxScroll = () => root.scrollHeight - root.clientHeight;
-    
-    // coming back up from the shop: start just before the finale
-    if (startAtEnd) {
-      smoothRaw = MAIN_END - 0.03;
-      root.scrollTop = smoothRaw * maxScroll();
-      snapCamera = true;
-    }
-
-    // ── events ──
     const onMouseMove = (e: MouseEvent) => {
-      cursorX = e.clientX;
-      cursorY = e.clientY;
-      if (cursorInner) {
-        cursorInner.style.left = `${cursorX}px`;
-        cursorInner.style.top = `${cursorY}px`;
-      }
       targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
       targetMouseY = (e.clientY / window.innerHeight) * 2 - 1;
     };
@@ -416,10 +394,6 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       uniforms.uResolution.value.set(sizes.width, sizes.height);
     };
-    const navHandlers = navLinks.map((_, i) => () => {
-      root.scrollTo({ top: maxScroll() * NAV_TARGETS[i] * MAIN_END, behavior: "smooth" });
-    });
-    navLinks.forEach((link, i) => link.addEventListener("click", navHandlers[i]));
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("resize", onResize);
 
@@ -429,16 +403,14 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
     // ── animation loop ──
     const animate = () => {
       raf = requestAnimationFrame(animate);
-      const dt = clock.getDelta();
+      const dt = Math.min(clock.getDelta(), 0.05);
       if (mixer) mixer.update(dt);
 
-      // where we are on the page (smoothed)
-      const max = maxScroll();
-      const targetRaw = max > 0 ? root.scrollTop / max : 0;
-      smoothRaw += (targetRaw - smoothRaw) * 0.025;
+      // follow the shared scroll smoothly (same easing as the gallery walk)
+      const targetRaw = turnFromJourney(journey.target);
+      smoothRaw = THREE.MathUtils.damp(smoothRaw, targetRaw, 2.6, dt);
 
-      // first part of the page: the four slides. Last part: the finale.
-      const targetScroll = Math.min(1, targetRaw / MAIN_END);
+      // first part of the turn: the four slides. Last part: the finale.
       currentScroll = Math.min(1, smoothRaw / MAIN_END);
       const finale = clamp01((smoothRaw - MAIN_END) / (1 - MAIN_END));
       const finaleEase = finale * finale * (3 - 2 * finale);
@@ -446,18 +418,11 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
       mouseX += (targetMouseX - mouseX) * 0.05;
       mouseY += (targetMouseY - mouseY) * 0.05;
 
-      outerX += (cursorX - outerX) * 0.2;
-      outerY += (cursorY - outerY) * 0.2;
-      if (cursorOuter) {
-        cursorOuter.style.left = `${outerX}px`;
-        cursorOuter.style.top = `${outerY}px`;
-      }
-
       // slight tilt from the mouse; in the finale the carpet makes one
       // more full turn on its own and grows bigger
       if (modelPivot) {
-        modelPivot.rotation.y = mouseX * 0.25 + finaleEase * Math.PI * 2;
-        modelPivot.rotation.x = mouseY * 0.15 * (1 - finaleEase);
+        modelPivot.rotation.y =
+          clock.elapsedTime * IDLE_SPIN + mouseX * 0.25 + finaleEase * Math.PI * 2;        modelPivot.rotation.x = mouseY * 0.15 * (1 - finaleEase);
         modelPivot.scale.setScalar(1 + finaleEase * 0.45);
       }
 
@@ -484,19 +449,21 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
       }
       sparkGeometry.attributes.position.needsUpdate = true;
 
-      // the camera orbits the carpet through a full 360° as you scroll
+      // the camera orbits the carpet through a full 360° as you scroll.
+      // On tall phone screens it stands further back so the carpet fits.
+      const portrait = sizes.width < sizes.height;
       const phi = currentScroll * Math.PI * 2;
       const y = 0.35 + Math.sin(currentScroll * Math.PI) * 0.8;
-      const radius = 4.2 - Math.sin(currentScroll * Math.PI) * 0.6;
+      const radius = (4.2 - Math.sin(currentScroll * Math.PI) * 0.6) * (portrait ? 1.45 : 1);
       const progress = Math.min(1, currentScroll / 0.28);
       const easeFactor = (Math.cos(progress * Math.PI) + 1) * 0.5;
-      lookTarget.set(-0.9 * easeFactor, -0.15, 0);
+      lookTarget.set(portrait ? 0 : -0.9 * easeFactor, portrait ? -0.6 : -0.15, 0);
       camTarget.set(radius * Math.sin(phi), y, radius * Math.cos(phi));
-            if (snapCamera) {
+      if (snapCamera) {
         camera.position.copy(camTarget);
         snapCamera = false;
       } else {
-        camera.position.lerp(camTarget, 0.025);
+        camera.position.lerp(camTarget, 0.06);
       }
       camera.lookAt(lookTarget);
 
@@ -527,16 +494,15 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
         dot.style.top = `${top}%`;
       });
 
-      // scroll bar, finale hint, and the fade into the shop
-      if (barThumb) barThumb.style.top = `${clamp01(targetRaw) * 100}%`;
+      // finale hint, and the fade into the shop
       if (finaleHint) {
         finaleHint.style.opacity = currentScroll > 0.97 && finale < 0.45 ? "1" : "0";
       }
       if (fadeEl) fadeEl.style.opacity = String(clamp01((finale - 0.55) / 0.4));
 
       // the finale is finished: open the shop
-      if (!shopFired.current && finale > 0.97) {
-        shopFired.current = true;
+      if (!shopFired && finale > 0.97) {
+        shopFired = true;
         onShopRef.current();
       }
 
@@ -550,7 +516,6 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("resize", onResize);
-      navLinks.forEach((link, i) => link.removeEventListener("click", navHandlers[i]));
       scene.traverse((obj) => {
         const mesh = obj as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
@@ -559,44 +524,11 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
       });
       renderer.dispose();
     };
-    }, [artwork, startAtEnd]);
-
-  // dragging or tapping the scroll bar
-  const dragBar = (e: React.PointerEvent<HTMLDivElement>) => {
-    const root = rootRef.current;
-    if (!root) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const f = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    root.scrollTop = f * (root.scrollHeight - root.clientHeight);
-  };
+  }, [artwork]);
 
   return (
-    <div className="lv fade-in" ref={rootRef} style={{ position: "fixed", inset: 0, overflowY: "auto" }}>
-      <div className="cursor-inner" />
-      <div className="cursor-outer" />
-
+    <div className="lv fade-in" ref={rootRef} style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
       <div className="cinematic-container">
-        <div className="main-header">
-          <div className="brand">{siteConfig.brandName}</div>
-          <nav className="header-nav">
-            <button className="nav-link">Story</button>
-            <span className="nav-dot" />
-            <button className="nav-link">Dimensions</button>
-            <span className="nav-dot" />
-            <button className="nav-link">Material</button>
-            <span className="nav-dot" />
-            <button className="nav-link">Craft</button>
-          </nav>
-          <div className="header-actions" style={{ display: "flex", gap: 10 }}>
-            <button className="contact-btn" onClick={onBack}>
-              Back to gallery <span className="btn-circle" />
-            </button>
-            <button className="contact-btn" onClick={onShop}>
-              Shop <span className="btn-circle" />
-            </button>
-          </div>
-        </div>
-
         <div className="slide" id="lv-slide-1">
           <SplitTitle text={artwork.title} />
           <div className="desc-row">
@@ -649,28 +581,11 @@ export default function CarpetViewer({ artwork, onBack, onShop, startAtEnd = fal
 
       <canvas className="lv-canvas" ref={canvasRef} />
 
-      {/* scroll bar for this page */}
-      <div
-        className="lv-bar"
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          dragBar(e);
-        }}
-        onPointerMove={(e) => {
-          if (e.buttons === 1 || e.pointerType === "touch") dragBar(e);
-        }}
-      >
-        <div className="lv-bar-thumb" />
-      </div>
-
       {/* shown at the end of the slides */}
       <p className="lv-finale-hint">Keep scrolling to enter the shop</p>
 
       {/* ivory fade that blends into the shop page */}
       <div className="lv-fade" />
-
-      {/* page length: about 900vh of slides plus the finale */}
-      <div className="lv-spacer" style={{ height: "1050vh" }} />
     </div>
   );
 }
