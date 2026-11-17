@@ -1,0 +1,213 @@
+/* ───── shop page ───── */
+.shop {
+  background: #eae4d9;
+  color: #452a1d;
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 300;
+  touch-action: pan-y;
+}
+
+.shop-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 40px;
+  background: rgba(234, 228, 217, 0.92);
+  border-bottom: 1px solid rgba(69, 42, 29, 0.12);
+}
+.shop-logo { height: 50px; width: auto; }
+
+.shop-link {
+  background: none;
+  border: none;
+  padding: 8px 0;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #452a1d;
+  cursor: pointer;
+  text-decoration: none;
+}
+.shop-link:hover { color: #927454; }
+
+.shop-eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #927454;
+}
+
+.shop-intro {
+  padding: 64px 40px 28px;
+  text-align: center;
+}
+.shop-intro h1 {
+  margin: 0;
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: clamp(34px, 5vw, 60px);
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 48px 36px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 40px 100px;
+}
+
+.shop-card h2 {
+  margin: 0;
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 26px;
+}
+.shop-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 19 / 27;
+  margin-bottom: 16px;
+  padding: 10px;
+  border: none;
+  background: #d9d0c2;
+  box-shadow: 0 18px 40px rgba(69, 42, 29, 0.16);
+  cursor: pointer;
+  overflow: hidden;
+}
+.shop-img,
+.shop-noimg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.shop-frame:hover .shop-img { transform: scale(1.04); }
+.shop-noimg {
+  display: grid;
+  place-items: center;
+  background: #452a1d;
+}
+.shop-noimg img { width: 60%; height: auto; }
+
+.shop-meta {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b5746;
+}
+.shop-price {
+  margin: 10px 0 0;
+  font-size: 16px;
+  font-weight: 400;
+}
+.shop-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.shop-btn {
+  display: inline-block;
+  padding: 12px 22px;
+  border: none;
+  background: #452a1d;
+  color: #eae4d9;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+.shop-btn:hover { background: #927454; }
+
+/* cart panel */
+.shop-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  background: rgba(36, 22, 15, 0.4);
+}
+.shop-cart {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  width: min(400px, 100vw);
+  padding: 26px 28px;
+  overflow-y: auto;
+  background: #f3eee6;
+  box-shadow: -20px 0 50px rgba(36, 22, 15, 0.2);
+  transform: translateX(105%);
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.shop-cart-open { transform: translateX(0); }
+.shop-cart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.shop-cart-head h2 {
+  margin: 0;
+  font-family: var(--font-serif), serif;
+  font-weight: 400;
+  font-size: 28px;
+}
+.shop-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.shop-lines li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(69, 42, 29, 0.12);
+}
+.shop-lines strong { font-weight: 400; font-size: 15px; }
+.shop-qty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shop-qty button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(69, 42, 29, 0.35);
+  background: none;
+  color: #452a1d;
+  font-size: 16px;
+  cursor: pointer;
+}
+.shop-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0 6px;
+  font-size: 16px;
+}
+.shop-total strong { font-weight: 400; }
+.shop-order {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .shop-header { padding: 10px 16px; }
+  .shop-logo { height: 40px; }
+  .shop-intro { padding: 40px 20px 16px; }
+  .shop-grid { padding: 20px 20px 80px; gap: 36px 20px; }
+}
