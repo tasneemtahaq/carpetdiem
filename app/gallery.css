@@ -395,3 +395,86 @@ body {
   .nav-logo img { height: 30px; }
   .walkbar { top: 60px; bottom: 30px; }
 }
+/* ───── three-line menu button ───── */
+.nav-burger {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.nav-burger span {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: currentColor;
+  transition: transform 0.35s ease, opacity 0.25s ease;
+}
+.nav-burger span:nth-child(1) { transform: translateY(-7px); }
+.nav-burger span:nth-child(3) { transform: translateY(7px); }
+.nav-burger.is-open span:nth-child(1) { transform: rotate(45deg); }
+.nav-burger.is-open span:nth-child(2) { opacity: 0; }
+.nav-burger.is-open span:nth-child(3) { transform: rotate(-45deg); }
+
+/* ───── the drop-down options ───── */
+.nav-menu {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 40px;
+  min-width: 220px;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(234, 228, 217, 0.96);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-left: 2px solid #927454;
+  box-shadow: 0 18px 50px rgba(69, 42, 29, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+}
+.nav-menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.nav-menu button {
+  display: block !important;
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #452a1d;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.nav-menu button:hover {
+  background: rgba(146, 116, 84, 0.12);
+  color: #927454;
+}
+
+@media (max-width: 1024px) {
+  .nav-menu { right: 24px; }
+}
+@media (max-width: 640px) {
+  .nav-burger { width: 40px; height: 40px; }
+  .nav-menu {
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+  }
+  .nav-menu button { padding: 14px 20px; font-size: 12px; }
+}
