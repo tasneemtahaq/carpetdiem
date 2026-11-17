@@ -478,3 +478,24 @@ body {
   }
   .nav-menu button { padding: 14px 20px; font-size: 12px; }
 }
+/* ───── smoked glass, so the cut-out name and emblem stand out ───── */
+.fd-glass {
+  /* ★ glass darkness: raise 0.72 / 0.55 for darker glass, lower them for lighter */
+  background: linear-gradient(135deg, rgba(58, 36, 24, 0.72), rgba(69, 42, 29, 0.55)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(120%) !important;
+  backdrop-filter: blur(18px) saturate(120%) !important;
+}
+
+/* light text on the dark glass */
+.fd-door {
+  color: #f3ead9;
+}
+.fd-door p {
+  text-shadow: 0 1px 8px rgba(36, 22, 15, 0.55);
+}
+.fd-hint {
+  border-bottom-color: rgba(243, 234, 217, 0.7) !important;
+}
+.fd-handle {
+  background: rgba(248, 231, 196, 0.85) !important;
+}

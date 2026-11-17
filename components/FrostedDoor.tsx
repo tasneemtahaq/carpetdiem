@@ -33,16 +33,16 @@ const EMBLEM_SCALE = 1.5;
 const EMBLEM_GAP = 0.25;
 
 // ★ Colour of the solid letters past the glass ("DIEM")
-const SOLID_COLOR = "#f5efe4";
+const SOLID_COLOR = "#c9a25c";
 // Soft dark edge behind the solid letters, so off-white stays readable on the bright gallery
 const SOLID_SHADOW = "rgba(69,42,29,0.6)";
 
 // ----- Readability settings (all as a share of the letter height) -----
 // Darkens the 3D scene seen THROUGH the cut-outs, so they read as clear shapes
-const INNER_TINT = 0.28; // 0 = no tint, 1 = black
+const INNER_TINT = 0; // 0 = no tint, 1 = black (keeps the cut-outs bright)
 // Cut-glass look: a shadow falls into each cut-out from its top edge,
 // and a faint light catches its bottom edge
-const BEVEL_SHADOW_COLOR = "rgba(0,0,0,0.7)";
+const BEVEL_SHADOW_COLOR = "rgba(0,0,0,0.4)";
 const BEVEL_SHADOW_BLUR = 0.1;
 const BEVEL_SHADOW_DEPTH = 0.05;
 const BEVEL_LIGHT_COLOR = "rgba(255,255,255,0.45)";
@@ -50,7 +50,8 @@ const BEVEL_LIGHT_BLUR = 0.04;
 const BEVEL_LIGHT_DEPTH = 0.017;
 // Soft dark shadow on the glass just OUTSIDE the cut-outs, so they look carved in
 const EDGE_SHADOW_BLUR = 0.07;
-const EDGE_SHADOW_COLOR = "rgba(0,0,0,0.35)";
+// a soft light glow around each cut-out, so its outline is clear on the dark glass
+const EDGE_SHADOW_COLOR = "rgba(248,231,196,0.55)";
 
 function makeCanvas(width: number, height: number, dpr: number) {
   const canvas = document.createElement("canvas");
